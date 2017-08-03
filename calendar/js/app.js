@@ -194,9 +194,12 @@ app.classes.calendar = (function(){ "use strict"; return AppJS.extend(
 				jQuery(_et2.DOMContainer).hide();
 
 				// Set client side holiday cache for this year
-				egw.window.et2_calendar_view.holiday_cache[content.data.year] = content.data.holidays;
-				delete content.data.holidays;
-				delete content.data.year;
+				if(egw.window.et2_calendar_view)
+				{
+					egw.window.et2_calendar_view.holiday_cache[content.data.year] = content.data.holidays;
+					delete content.data.holidays;
+					delete content.data.year;
+				}
 
 				this._setup_sidebox_filters();
 
@@ -236,6 +239,9 @@ app.classes.calendar = (function(){ "use strict"; return AppJS.extend(
 				{
 					this.et2.getWidgetById('title').input.select();
 				}
+
+				// Disable loading prompt (if loaded nopopup)
+				egw.loading_prompt(this.appname,false);
 				break;
 
 			case 'calendar.freetimesearch':
@@ -2234,8 +2240,10 @@ app.classes.calendar = (function(){ "use strict"; return AppJS.extend(
 
 				// Set rows that need it
 				grid.iterateOver(function(widget) {
+					var was_disabled = false;
 					if(row_index < value.length)
 					{
+						was_disabled = widget.options.disabled;
 						widget.set_disabled(false);
 					}
 					else
@@ -2263,6 +2271,15 @@ app.classes.calendar = (function(){ "use strict"; return AppJS.extend(
 						widget.resizeTimes();
 						window.setTimeout(jQuery.proxy(widget.set_header_classes, widget),0);
 
+						// If disabled while the daycols were loaded, they won't load their events
+						for(var day = 0; was_disabled && day < widget.day_widgets.length; day++)
+						{
+							egw.dataStoreUID(
+									widget.day_widgets[day].registeredUID,
+								egw.dataGetUIDdata(widget.day_widgets[day].registeredUID).data
+							);
+						}
+						
 						// Hide loader
 						widget.loader.hide();
 						row_index++;

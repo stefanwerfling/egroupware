@@ -1181,7 +1181,7 @@ class calendar_boupdate extends calendar_bo
 		if (!isset($event['whole_day'])) $event['whole_day'] = $this->isWholeDay($event);
 
 		// set recur-enddate/range-end to real end-date of last recurrence
-		if ($event['recur_type'] != MCAL_RECUR_NONE && $event['recur_enddate'])
+		if ($event['recur_type'] != MCAL_RECUR_NONE && $event['recur_enddate'] && $event['start'])
 		{
 			$event['recur_enddate'] = new Api\DateTime($event['recur_enddate'], calendar_timezones::DateTimeZone($event['tzid']));
 			$event['recur_enddate']->setTime(23,59,59);
@@ -1780,7 +1780,7 @@ class calendar_boupdate extends calendar_bo
 
 		$event_arr['link']['field'] = lang('URL');
 		$eventStart_arr = $this->date2array($event['start']); // give this as 'date' to the link to pick the right recurrence for the participants state
-		$link = $GLOBALS['egw_info']['server']['webserver_url'].'/index.php?menuaction=calendar.calendar_uiforms.edit&cal_id='.$event['id'].'&date='.$eventStart_arr['full'].'&no_popup=1';
+		$link = $GLOBALS['egw_info']['server']['webserver_url'].'/index.php?menuaction=calendar.calendar_uiforms.edit&cal_id='.$event['id'].'&date='.$eventStart_arr['full'].'&no_popup=1&ajax=true';
 		// if url is only a path, try guessing the rest ;-)
 		if ($link[0] == '/')
 		{

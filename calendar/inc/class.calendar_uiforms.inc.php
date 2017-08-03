@@ -450,7 +450,8 @@ class calendar_uiforms extends calendar_ui
 									// Expand mailing lists
 									if($type == 'l')
 									{
-										foreach($this->bo->enum_mailing_list($participant) as $contact)
+										// Ignore ACL here, allow inviting anyone in the list
+										foreach($this->bo->enum_mailing_list($participant, true) as $contact)
 										{
 											// Mailing lists can contain users, so allow for that possibility
 											$_type = is_numeric($contact) ? '' : $contact[0];
@@ -1845,7 +1846,8 @@ class calendar_uiforms extends calendar_ui
 		}
 		if ($preserved['no_popup'])
 		{
-			$etpl->set_cell_attribute('button[cancel]','onclick','');
+			// If not a popup, load the normal calendar interface on cancel
+			$etpl->set_cell_attribute('button[cancel]','onclick','app.calendar.linkHandler(\'index.php?menuaction=calendar.calendar_uiviews.index\')');
 		}
 
 		// Allow admins to restore deleted events
