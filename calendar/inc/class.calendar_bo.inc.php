@@ -382,7 +382,7 @@ class calendar_bo
 	{
 		$contact_list = array();
 		$contacts = new Api\Contacts();
-		if($contacts->check_list((int)substr($id,1), ACL::READ))
+		if($contacts->check_list((int)substr($id,1), ACL::READ) || (int)substr($id,1) < 0)
 		{
 			$options = array('list' => substr($id,1));
 			$lists = $contacts->search('',true,'','','',false,'AND',false,$options);
@@ -895,11 +895,13 @@ class calendar_bo
 			}
 			if (!isset($event['start']) || !isset($event['end']))
 			{
-				$event['start'] = $event_read['start'];
-				$event['end'] = $event_read['end'];
+				$event['start'] = $this->date2usertime($event_read['start']);
+				$event['end'] = $this->date2usertime($event_read['end']);
 			}
 		}
 		if (!$start) $start = $event['start'];
+		$start_obj = new Api\DateTime($start);
+		$read_start = new Api\DateTime($event_read['start']);
 
 		$events = array();
 		$this->insert_all_recurrences($event,$start,$this->date2usertime($this->config['horizont']),$events);
