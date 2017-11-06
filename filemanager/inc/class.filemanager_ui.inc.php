@@ -158,7 +158,8 @@ class filemanager_ui
 				'icon' => 'filemanager/button_createdir',
 				'group' => $group,
 				'allowOnMultiple' => false,
-				'onExecute' => 'javaScript:app.filemanager.createdir'
+				'onExecute' => 'javaScript:app.filemanager.createdir',
+				'disableClass' => 'noEdit'
 			),
 			'mail' => array(
 				'caption' => lang('Share files'),
@@ -269,6 +270,12 @@ class filemanager_ui
 				}
 				$actions['paste']['children']["{$action_id}_paste"] = $action;
 			}
+		}
+
+		// Anonymous users have limited actions
+		if(self::is_anonymous($GLOBALS['egw_info']['user']['account_id']))
+		{
+			self::restrict_anonymous_actions($actions);
 		}
 		return $actions;
 	}
@@ -916,12 +923,13 @@ class filemanager_ui
 				{
 					$dir_is_writable[$path] = Vfs::is_writable($path);
 				}
-				if(!$dir_is_writable[$path])
-				{
-					$row['class'] .= 'noEdit ';
-				}
+
 				$row['class'] .= 'isDir ';
 				$row['is_dir'] = 1;
+			}
+			if(!$dir_is_writable[$path])
+			{
+				$row['class'] .= 'noEdit ';
 			}
 			$row['download_url'] = Vfs::download_url($path);
 			$row['gid'] = -abs($row['gid']);	// gid are positive, but we use negagive account_id for groups internal
@@ -1227,7 +1235,8 @@ class filemanager_ui
 		if (($readonlys['uid'] = !Vfs::$is_root) && !$content['uid']) $content['ro_uid_root'] = 'root';
 		// only owner can change group & perms
 		if (($readonlys['gid'] = !$content['is_owner'] ||
-			Vfs::parse_url(Vfs::resolve_url($content['path']),PHP_URL_SCHEME) == 'oldvfs'))	// no uid, gid or perms in oldvfs
+			Vfs::parse_url(Vfs::resolve_url($content['path']),PHP_URL_SCHEME) == 'oldvfs') ||// no uid, gid or perms in oldvfs
+				 !Vfs::is_writable($path))
 		{
 			if (!$content['gid']) $content['ro_gid_root'] = 'root';
 			foreach($content['perms'] as $name => $value)
@@ -1235,6 +1244,7 @@ class filemanager_ui
 				$readonlys['perms['.$name.']'] = true;
 			}
 		}
+		$readonlys['gid'] = $readonlys['gid'] || !Vfs::is_writable($path);
 		$readonlys['name'] = $path == '/' || !($dir = Vfs::dirname($path)) || !Vfs::is_writable($dir);
 		$readonlys['comment'] = !Vfs::is_writable($path);
 		$readonlys['tabs']['filemanager.file.preview'] = $readonlys['tabs']['filemanager.file.perms'] = $content['is_link'];
@@ -1262,7 +1272,8 @@ class filemanager_ui
 				5 => lang('Display of content'),
 				0 => lang('No access'),
 			);
-			if(($content['eacl'] = Vfs::get_eacl($content['path'])) !== false)	// backend supports eacl
+			if(($content['eacl'] = Vfs::get_eacl($content['path'])) !== false &&	// backend supports eacl
+				$GLOBALS['egw_info']['user']['account_id'] == Vfs::$user)	// leave eACL tab disabled for sharing
 			{
 				unset($readonlys['tabs']['filemanager.file.eacl']);	// --> switch the tab on again
 				foreach($content['eacl'] as &$eacl)
@@ -1340,6 +1351,11 @@ class filemanager_ui
 			$tpl->setElementAttribute('sudouser', 'help','Enter setup user and password to get root rights');
 			$tpl->setElementAttribute('sudouser', 'onclick','app.filemanager.set_sudoButton(widget,"logout")');
 		}
+		else if (self::is_anonymous($GLOBALS['egw_info']['user']['account_id']))
+		{
+			// Just hide sudo for anonymous users
+			$readonlys['sudouser'] = true;
+		}
 		if (($extra_tabs = Vfs::getExtraInfo($path,$content)))
 		{
 			// add to existing tabs in template
@@ -1372,6 +1388,32 @@ class filemanager_ui
 		$GLOBALS['egw_info']['flags']['app_header'] = lang('Preferences').' '.Vfs::decodePath($path);
 
 		$tpl->exec('filemanager.filemanager_ui.file',$content,$sel_options,$readonlys,$preserve,2);
+	}
+
+	/**
+	 * Check if the user is anonymous user
+	 * @param integer $account_id
+	 */
+	protected static function is_anonymous($account_id)
+	{
+		$acl = new Api\Acl($account_id);
+		$acl->read_repository();
+		return $acl->check('anonymous', 1, 'phpgwapi');
+	}
+
+	/**
+	 * Remove some more dangerous actions
+	 * @param Array $actions
+	 */
+	protected static function restrict_anonymous_actions(&$actions)
+	{
+		$remove = array(
+			'delete'
+		);
+		foreach($remove as $key)
+		{
+			unset($actions[$key]);
+		}
 	}
 
 	/**
